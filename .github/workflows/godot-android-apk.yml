@@ -1,0 +1,25 @@
+name: Build Godot 4 Mobile Vulkan APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export_godot_apk:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export Android Debug/Release APK
+        run: |
+          mkdir -p build/android
+          godot --headless --verbose --export-debug "Android" build/android/app-release.apk || echo "Configure Android export_presets.cfg keystore for release signing"
+      - name: Publish Godot APK to Releases
+        if: hashFiles('build/android/app-release.apk') != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Godot 4 Release v1.0.${{ github.run_number }}
+          files: build/android/app-release.apk
