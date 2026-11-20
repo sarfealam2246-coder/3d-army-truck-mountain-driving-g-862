@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/apps_supabase_bridge.gd" id="1_supa"]
+[ext_resource type="Script" path="res://scripts/player_controller.gd" id="2_player"]
+
+[node name="Main" type="Node3D"]
+
+[node name="AppsSupabaseBridge" type="Node" parent="."]
+script = ExtResource("1_supa")
+
+[node name="SunLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.353, 0.353, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 24, 0)
+shadow_enabled = true
+
+[node name="PlayerVehicle" type="CharacterBody3D" parent="."]
+script = ExtResource("2_player")
+
+[node name="ChaseCamera" type="Camera3D" parent="PlayerVehicle"]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.34, 0, -0.34, 0.94, 0, 4.2, 8.5)
+current = true
