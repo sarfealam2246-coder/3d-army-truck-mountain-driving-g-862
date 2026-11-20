@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D army truck mountain driving game — Owner Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #070b14; color: #f8fafc; min-height: 100vh; display: flex; justify-content: center; padding: 20px; }
+    .card { width: 100%; max-width: 520px; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; }
+    h1 { margin: 0 0 6px; font-size: 20px; color: #06b6d4; }
+    p.sub { margin: 0 0 20px; font-size: 13px; color: #94a3b8; }
+    label { display: block; font-size: 12px; color: #cbd5e1; margin: 14px 0 6px; }
+    input, textarea { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #334155; background: #070b14; color: #f8fafc; font-size: 14px; }
+    .row { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
+    button { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 10px; background: #06b6d4; color: #070b14; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button:hover { opacity: 0.92; }
+    .status { margin-top: 14px; font-size: 13px; color: #10b981; min-height: 20px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>3D army truck mountain driving game · Owner Admin</h1>
+    <p class="sub">Live remote control connected to Apps Supabase (slug: <code>3d-army-truck-mountain-driving-g</code>)</p>
+
+    <div id="lockScreen">
+      <label for="pinInput">Enter Owner PIN</label>
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="Enter 4-digit PIN" />
+      <button onclick="unlock()">Unlock Admin Panel</button>
+      <div id="lockErr" class="status" style="color:#f43f5e"></div>
+    </div>
+
+    <div id="adminBody" class="hidden">
+      <label>Live Banner Title</label>
+      <input id="bannerTitle" value="3D army truck mountain driving game Live Event" />
+      <label>Push Announcement / Notification</label>
+      <textarea id="announcement" rows="3" placeholder="Message pushed to all live APK users..."></textarea>
+      <div class="row">
+        <div style="flex:1">
+          <label>Speed / Reward Multiplier</label>
+          <input id="speedMultiplier" type="number" step="0.1" value="1.0" />
+        </div>
+        <div style="flex:1">
+          <label>Discount %</label>
+          <input id="discountPercent" type="number" value="15" />
+        </div>
+      </div>
+      <div class="row">
+        <label style="margin:0;display:flex;gap:8px;align-items:center;">
+          <input id="vipUnlocked" type="checkbox" style="width:auto" /> Unlock VIP for All Users
+        </label>
+      </div>
+      <button onclick="publishLive()">Push Live Update to Public APK</button>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "YOUR_APPS_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_APPS_SUPABASE_ANON_KEY";
+    const APP_SLUG = "3d-army-truck-mountain-driving-g";
+    const EXPECTED_PIN = "1234";
+
+    function unlock() {
+      const val = document.getElementById('pinInput').value.trim();
+      if (val === EXPECTED_PIN) {
+        document.getElementById('lockScreen').classList.add('hidden');
+        document.getElementById('adminBody').classList.remove('hidden');
+        loadCurrent();
+      } else {
+        document.getElementById('lockErr').textContent = 'Invalid PIN. Try again.';
+      }
+    }
+
+    async function loadCurrent() {
+      if (!SUPABASE_URL.startsWith('https://')) return;
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/apps_config?app_slug=eq.' + encodeURIComponent(APP_SLUG), {
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+        });
+        const rows = await res.json();
+        if (rows && rows[0]) {
+          document.getElementById('bannerTitle').value = rows[0].banner_title || '';
+          document.getElementById('announcement').value = rows[0].announcement || '';
+          document.getElementById('speedMultiplier').value = rows[0].speed_multiplier ?? 1.0;
+          document.getElementById('discountPercent').value = rows[0].discount_percent ?? 0;
+          document.getElementById('vipUnlocked').checked = !!rows[0].vip_unlocked;
+        }
+      } catch (e) {}
+    }
+
+    async function publishLive() {
+      const status = document.getElementById('status');
+      if (!SUPABASE_URL.startsWith('https://')) {
+        status.style.color = '#f59e0b';
+        status.textContent = 'Apps Supabase URL was not configured at export time.';
+        return;
+      }
+      status.style.color = '#06b6d4';
+      status.textContent = 'Pushing update to Apps Supabase...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/apps_config?on_conflict=app_slug', {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            app_slug: APP_SLUG,
+            pin: EXPECTED_PIN,
+            banner_title: document.getElementById('bannerTitle').value,
+            announcement: document.getElementById('announcement').value,
+            speed_multiplier: Number(document.getElementById('speedMultiplier').value || 1),
+            discount_percent: Number(document.getElementById('discountPercent').value || 0),
+            vip_unlocked: document.getElementById('vipUnlocked').checked,
+            updated_at: new Date().toISOString()
+          })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        status.style.color = '#10b981';
+        status.textContent = 'Published live! All active APK installations will sync automatically.';
+      } catch (err) {
+        status.style.color = '#f43f5e';
+        status.textContent = 'Push failed: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
